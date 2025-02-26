@@ -76,7 +76,6 @@
 <body>
 
 <div class="container">
-    <!-- Input section -->
     <div class="input-container">
         <h1>CBRE Intrinsic Share Price Calculator</h1>
 
@@ -138,7 +137,6 @@
         </table>
     </div>
 
-    <!-- Result section -->
     <div class="result-container">
         <div id="terminalValueFormula" class="result-box">
             <strong>Terminal Value:</strong> <span id="terminalValueCalc">-</span>
@@ -152,24 +150,21 @@
             <strong>Intrinsic Share Price:</strong> <span id="intrinsicPrice">$0.00</span>
         </div>
 
-        <!-- Graph -->
         <canvas id="fcfChart"></canvas>
     </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-    let fcfChart; // Global variable to store chart instance
+    let fcfChart; 
 
     function updateFCFChart(fcfValues, dfcfValues) {
         let ctx = document.getElementById('fcfChart').getContext('2d');
 
-        // If the chart already exists, destroy it before creating a new one
         if (fcfChart) {
             fcfChart.destroy();
         }
 
-        // Create a new chart
         fcfChart = new Chart(ctx, {
             type: 'line',
             data: {
@@ -177,7 +172,7 @@
                 datasets: [
                     {
                         label: 'FCF Estimate',
-                        data: fcfValues.map(value => value / 1000), // Convert to billions
+                        data: fcfValues.map(value => value / 1000), 
                         borderColor: 'rgba(0, 255, 0, 1)',
                         backgroundColor: 'rgba(0, 255, 0, 0.2)',
                         fill: true,
@@ -185,7 +180,7 @@
                     },
                     {
                         label: 'Discounted FCF',
-                        data: dfcfValues.map(value => value / 1000), // Convert to billions
+                        data: dfcfValues.map(value => value / 1000), 
                         borderColor: 'rgba(255, 165, 0, 1)',
                         backgroundColor: 'rgba(255, 165, 0, 0.2)',
                         fill: true,
@@ -199,7 +194,7 @@
                         beginAtZero: true,
                         ticks: {
                             callback: function(value) {
-                                return value + 'B'; // Add the "B" for billions
+                                return value + 'B'; 
                             }
                         }
                     }
@@ -216,10 +211,10 @@
         let fcf2 = parseFloat(document.getElementById('fcf2').value);
         let fcf3 = parseFloat(document.getElementById('fcf3').value);
         let fcf4 = parseFloat(document.getElementById('fcf4').value);
-        let fcf5 = Math.max(0, parseFloat(document.getElementById('fcf5').value)); // Ensure FCF5 is non-negative
+        let fcf5 = Math.max(0, parseFloat(document.getElementById('fcf5').value)); 
 
-        let wacc = parseFloat(document.getElementById('wacc').value) / 100; // Keep WACC as a percentage
-        let terminalGrowth = parseFloat(document.getElementById('terminalGrowth').value) / 100; // Keep Terminal Growth as a percentage
+        let wacc = parseFloat(document.getElementById('wacc').value) / 100; 
+        let terminalGrowth = parseFloat(document.getElementById('terminalGrowth').value) / 100; 
 
         let discountFactor = [1 / (1 + wacc), 1 / Math.pow(1 + wacc, 2), 1 / Math.pow(1 + wacc, 3), 1 / Math.pow(1 + wacc, 4), 1 / Math.pow(1 + wacc, 5)];
 
@@ -231,36 +226,28 @@
             fcf5 * discountFactor[4]
         ];
 
-        // Display the DFCF values in millions
         for (let i = 0; i < 5; i++) {
-            document.getElementById(`dfcf${i + 1}`).innerText = discountedFCFs[i].toFixed(0); // Display in millions (no conversion)
+            document.getElementById(`dfcf${i + 1}`).innerText = discountedFCFs[i].toFixed(0); 
         }
 
         let terminalValue = (fcf5 * (1 + terminalGrowth)) / (wacc - terminalGrowth);
         let enterpriseValue = discountedFCFs.reduce((a, b) => a + b, 0) + terminalValue;
 
-        // Convert Enterprise Value and Terminal Value to billions for display
-        let enterpriseValueInBillions = enterpriseValue / 1000;  // Convert from millions to billions
-        let terminalValueInBillions = terminalValue / 1000; // Convert from millions to billions
+        let enterpriseValueInBillions = enterpriseValue / 1000;  
+        let terminalValueInBillions = terminalValue / 1000; 
 
-        // Display Terminal Value in Billions
         document.getElementById('terminalValueCalc').innerText = `$${terminalValueInBillions.toFixed(2)}B`;
 
-        // Display Enterprise Value in Billions
         document.getElementById('enterpriseValue').innerText = `$${enterpriseValueInBillions.toFixed(2)}B`;
 
-        // Calculate equity value and intrinsic share price based on millions
-        let equityValueInMillions = enterpriseValue - netDebt; // Keep the equity value in millions for intrinsic share price
+        let equityValueInMillions = enterpriseValue - netDebt;
         let intrinsicSharePrice = equityValueInMillions / sharesOutstanding;
 
-        // Display Intrinsic Share Price
         document.getElementById('intrinsicPrice').innerText = `$${intrinsicSharePrice.toFixed(2)}`;
 
-        // Update the FCF Chart (in billions)
         updateFCFChart([fcf1, fcf2, fcf3, fcf4, fcf5], discountedFCFs);
     }
 
-    // Run the calculation on page load
     calculateIntrinsicPrice();
 </script>
 

@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CBRE Intrinsic Share Price Calculator</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #0b3d2e;
+            color: white;
+            text-align: center;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            display: flex;
+            max-width: 1000px;
+            margin: auto;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.2);
+        }
+        .input-container {
+            flex: 1;
+            padding-right: 20px;
+        }
+        .result-container {
+            flex: 1;
+            padding-left: 20px;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+        }
+        h1 {
+            color: #a8ffbf;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: rgba(255, 255, 255, 0.1);
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 10px;
+            text-align: center;
+        }
+        th {
+            background-color: #1e5631;
+            color: white;
+        }
+        input {
+            width: 100px;
+            padding: 5px;
+            text-align: center;
+            background: #e6ffe6;
+            border: none;
+            border-radius: 5px;
+        }
+        .result-box {
+            margin-top: 20px;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            font-size: 1.5em;
+        }
+        #fcfChart {
+            margin-top: 30px;
+            width: 100%;
+            height: 400px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <!-- Input section -->
+    <div class="input-container">
+        <h1>CBRE Intrinsic Share Price Calculator</h1>
+
+        <table>
+            <tr>
+                <td>Net Debt (Millions)</td>
+                <td><input type="number" id="netDebt" value="2186" oninput="calculateIntrinsicPrice()"></td>
+            </tr>
+            <tr>
+                <td>Shares Outstanding (Millions)</td>
+                <td><input type="number" id="sharesOutstanding" value="306" oninput="calculateIntrinsicPrice()"></td>
+            </tr>
+        </table>
+
+        <h2>Free Cash Flow Projections</h2>
+        <table>
+            <tr>
+                <th>Year</th>
+                <th>FCF Estimate (Millions)</th>
+                <th>Discounted FCF (Millions)</th>
+            </tr>
+            <tr>
+                <td>2026</td>
+                <td><input type="number" id="fcf1" value="1660" oninput="calculateIntrinsicPrice()"></td>
+                <td id="dfcf1">-</td>
+            </tr>
+            <tr>
+                <td>2027</td>
+                <td><input type="number" id="fcf2" value="1790" oninput="calculateIntrinsicPrice()"></td>
+                <td id="dfcf2">-</td>
+            </tr>
+            <tr>
+                <td>2028</td>
+                <td><input type="number" id="fcf3" value="1930" oninput="calculateIntrinsicPrice()"></td>
+                <td id="dfcf3">-</td>
+            </tr>
+            <tr>
+                <td>2029</td>
+                <td><input type="number" id="fcf4" value="2080" oninput="calculateIntrinsicPrice()"></td>
+                <td id="dfcf4">-</td>
+            </tr>
+            <tr>
+                <td>2030</td>
+                <td><input type="number" id="fcf5" value="2240" oninput="calculateIntrinsicPrice()"></td>
+                <td id="dfcf5">-</td>
+            </tr>
+        </table>
+
+        <h2>Discount Rate & Terminal Growth</h2>
+        <table>
+            <tr>
+                <td>WACC / Discount Rate (%)</td>
+                <td><input type="number" id="wacc" value="9.3" step="0.1" oninput="calculateIntrinsicPrice()"></td>
+            </tr>
+            <tr>
+                <td>Terminal Growth Rate (%)</td>
+                <td><input type="number" id="terminalGrowth" value="3.0" step="0.1" oninput="calculateIntrinsicPrice()"></td>
+            </tr>
+        </table>
+    </div>
+
+    <!-- Result section -->
+    <div class="result-container">
+        <div id="terminalValueFormula" class="result-box">
+            <strong>Terminal Value:</strong> <span id="terminalValueCalc">-</span>
+        </div>
+
+        <div class="result-box">
+            <strong>Enterprise Value:</strong> <span id="enterpriseValue">$44,050M</span>
+        </div>
+
+        <div class="result-box">
+            <strong>Intrinsic Share Price:</strong> <span id="intrinsicPrice">$0.00</span>
+        </div>
+
+        <!-- Graph -->
+        <canvas id="fcfChart"></canvas>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    let fcfChart; // Global variable to store chart instance
+
+    function updateFCFChart(fcfValues, dfcfValues) {
+        let ctx = document.getElementById('fcfChart').getContext('2d');
+
+        // If the chart already exists, destroy it before creating a new one
+        if (fcfChart) {
+            fcfChart.destroy();
+        }
+
+        // Create a new chart
+        fcfChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: ['2026', '2027', '2028', '2029', '2030'],
+                datasets: [
+                    {
+                        label: 'FCF Estimate',
+                        data: fcfValues.map(value => value / 1000), // Convert to billions
+                        borderColor: 'rgba(0, 255, 0, 1)',
+                        backgroundColor: 'rgba(0, 255, 0, 0.2)',
+                        fill: true,
+                        tension: 0.4
+                    },
+                    {
+                        label: 'Discounted FCF',
+                        data: dfcfValues.map(value => value / 1000), // Convert to billions
+                        borderColor: 'rgba(255, 165, 0, 1)',
+                        backgroundColor: 'rgba(255, 165, 0, 0.2)',
+                        fill: true,
+                        tension: 0.4
+                    }
+                ]
+            },
+            options: {
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function(value) {
+                                return value + 'B'; // Add the "B" for billions
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    function calculateIntrinsicPrice() {
+        let netDebt = parseFloat(document.getElementById('netDebt').value);
+        let sharesOutstanding = parseFloat(document.getElementById('sharesOutstanding').value);
+
+        let fcf1 = parseFloat(document.getElementById('fcf1').value);
+        let fcf2 = parseFloat(document.getElementById('fcf2').value);
+        let fcf3 = parseFloat(document.getElementById('fcf3').value);
+        let fcf4 = parseFloat(document.getElementById('fcf4').value);
+        let fcf5 = Math.max(0, parseFloat(document.getElementById('fcf5').value)); // Ensure FCF5 is non-negative
+
+        let wacc = parseFloat(document.getElementById('wacc').value) / 100; // Keep WACC as a percentage
+        let terminalGrowth = parseFloat(document.getElementById('terminalGrowth').value) / 100; // Keep Terminal Growth as a percentage
+
+        let discountFactor = [1 / (1 + wacc), 1 / Math.pow(1 + wacc, 2), 1 / Math.pow(1 + wacc, 3), 1 / Math.pow(1 + wacc, 4), 1 / Math.pow(1 + wacc, 5)];
+
+        let discountedFCFs = [
+            fcf1 * discountFactor[0],
+            fcf2 * discountFactor[1],
+            fcf3 * discountFactor[2],
+            fcf4 * discountFactor[3],
+            fcf5 * discountFactor[4]
+        ];
+
+        // Display the DFCF values in millions
+        for (let i = 0; i < 5; i++) {
+            document.getElementById(`dfcf${i + 1}`).innerText = discountedFCFs[i].toFixed(0); // Display in millions (no conversion)
+        }
+
+        let terminalValue = (fcf5 * (1 + terminalGrowth)) / (wacc - terminalGrowth);
+        let enterpriseValue = discountedFCFs.reduce((a, b) => a + b, 0) + terminalValue;
+
+        // Convert Enterprise Value and Terminal Value to billions for display
+        let enterpriseValueInBillions = enterpriseValue / 1000;  // Convert from millions to billions
+        let terminalValueInBillions = terminalValue / 1000; // Convert from millions to billions
+
+        // Display Terminal Value in Billions
+        document.getElementById('terminalValueCalc').innerText = `$${terminalValueInBillions.toFixed(2)}B`;
+
+        // Display Enterprise Value in Billions
+        document.getElementById('enterpriseValue').innerText = `$${enterpriseValueInBillions.toFixed(2)}B`;
+
+        // Calculate equity value and intrinsic share price based on millions
+        let equityValueInMillions = enterpriseValue - netDebt; // Keep the equity value in millions for intrinsic share price
+        let intrinsicSharePrice = equityValueInMillions / sharesOutstanding;
+
+        // Display Intrinsic Share Price
+        document.getElementById('intrinsicPrice').innerText = `$${intrinsicSharePrice.toFixed(2)}`;
+
+        // Update the FCF Chart (in billions)
+        updateFCFChart([fcf1, fcf2, fcf3, fcf4, fcf5], discountedFCFs);
+    }
+
+    // Run the calculation on page load
+    calculateIntrinsicPrice();
+</script>
+
+</body>
+</html>
